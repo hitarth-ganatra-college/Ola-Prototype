@@ -1,0 +1,66 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "description": "Project Velocity — Circuit Breaker & Service Metrics",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Circuit Breaker State",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "trip_service_circuit_breaker_state",
+          "legendFormat": "Breaker State (0=closed, 0.5=halfOpen, 1=open)"
+        }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Rides Accepted (total)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "trip_service_rides_accepted_total", "legendFormat": "Accepted" }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Rides Completed (total)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "trip_service_rides_completed_total", "legendFormat": "Completed" }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 }
+    },
+    {
+      "id": 4,
+      "title": "Fallback Triggers (total)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "trip_service_fallback_total", "legendFormat": "Fallbacks" }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["velocity", "circuit-breaker"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Project Velocity Overview",
+  "uid": "velocity-overview-001",
+  "version": 1
+}
