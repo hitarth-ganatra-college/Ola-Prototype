@@ -166,7 +166,12 @@ app.post("/driver-requests/:driver_id/action", driverRequestsLimiter, async (req
   try {
     if (action === "accept") {
       const targetsRaw = await redis.get(`${RIDE_TARGETS_PREFIX}${ride_id}`);
-      const targets = targetsRaw ? JSON.parse(targetsRaw) : [driverId];
+      let targets = targetsRaw ? JSON.parse(targetsRaw) : null;
+      if (!targets) {
+        const queue = await getDriverQueue(driverId);
+        const accepted = queue.find((entry) => entry.ride_id === ride_id);
+        targets = accepted?.nearest_drivers?.map((d) => d.driver_id) || [driverId];
+      }
       await Promise.all(targets.map((id) => removeRideFromDriverQueue(id, ride_id)));
       await redis.del(`${RIDE_TARGETS_PREFIX}${ride_id}`);
       return res.json({ ok: true, action, ride_id, driver_id: driverId, cleared_for: targets });

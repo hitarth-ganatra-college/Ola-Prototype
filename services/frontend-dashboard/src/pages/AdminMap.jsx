@@ -5,6 +5,10 @@ import { getActiveDrivers, getManualOverrides, pushManualLocation, toggleManualO
 import MapView from "../components/MapView.jsx";
 import { DRIVER_PROFILE_IDS } from "../constants/drivers.js";
 
+function formatCoordinate(value) {
+  return Number.isFinite(value) ? String(value) : "";
+}
+
 export default function AdminMap() {
   const liveLocations = useDriverLocations(); // all drivers
   const [manualToggles, setManualToggles] = useState({}); // { driver_id: true/false }
@@ -67,8 +71,8 @@ export default function AdminMap() {
       for (const [driverId, loc] of Object.entries(mergedLocations)) {
         if (!next[driverId]) {
           next[driverId] = {
-            lat: Number.isFinite(loc.lat) ? String(loc.lat) : "",
-            lng: Number.isFinite(loc.lng) ? String(loc.lng) : "",
+            lat: formatCoordinate(loc.lat),
+            lng: formatCoordinate(loc.lng),
           };
         }
       }
