@@ -1,0 +1,19 @@
+{
+  "name": "trip-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "kafkajs": "^2.2.4",
+    "mongoose": "^8.5.1",
+    "opossum": "^8.3.0",
+    "prom-client": "^15.1.3"
+  }
+}
