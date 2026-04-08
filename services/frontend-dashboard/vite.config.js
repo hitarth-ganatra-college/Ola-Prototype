@@ -8,6 +8,9 @@ export default defineConfig({
     proxy: {
       "/api/identity": { target: "http://localhost:4001", rewrite: (p) => p.replace(/^\/api\/identity/, "") },
       "/api/matching": { target: "http://localhost:4004", rewrite: (p) => p.replace(/^\/api\/matching/, "") },
+      "/api/trip":     { target: "http://localhost:4005", rewrite: (p) => p.replace(/^\/api\/trip/, "") },
+      "/api/tracking": { target: "http://localhost:4003", rewrite: (p) => p.replace(/^\/api\/tracking/, "") },
+      "/api/admin":    { target: "http://localhost:4002", rewrite: (p) => p.replace(/^\/api\/admin/, "") },
     },
   },
 });
