@@ -132,16 +132,17 @@ npm run dev
 
 #### 🚗 Driver Flow
 1. Login with `driver1` / `pass123` (or any of `driver1`–`driver4`)
-2. See incoming ride requests panel (mock requests shown if backend offline)
-3. Click **"Accept Ride"** — calls `POST /api/trip/accept-ride` → emits `ride-accepted` Kafka event
-4. Active trip card shows trip details + status badge
-5. Click **"Mark Trip Completed"** to end trip
+2. In Driver view, use **"Acting as driver"** select to switch between driver identities (including simulation drivers)
+3. See incoming requests targeted to the selected driver (`GET /driver-requests/:driver_id`)
+4. Click **"Accept Ride"** — updates request status + calls `POST /api/trip/accept-ride` to emit `ride-accepted`
+5. Click **"Reject Ride"** to remove the request from that driver queue
+6. Active trip card shows trip details + status badge; click **"Mark Trip Completed"** to emit `ride-completed`
 
 #### 🗺️ Admin/Debug Flow
 1. Login with any account → click **Admin View** in sidebar
 2. Google Map shows all live driver markers (green = simulated, red = manual override)
-3. Use **"Enable Override"** toggle per driver to enable drag-to-update
-4. Drag a manual driver marker → pushes new coords to backend (`/api/admin/manual-location`)
+3. Use **"Enable Override"** toggle per driver to mark that driver manual in Redis (`driver:manual:<id>=1`)
+4. Enter latitude/longitude inputs for the enabled driver and click **Save Coordinates** (drag works too)
 5. Backend sets `driver:manual:<id>=1` in Redis, pausing simulation for that driver
 6. Use **"Disable Override"** to resume simulation
 
@@ -151,9 +152,12 @@ npm run dev
 |---|---|---|
 | Login | `POST /api/identity/login` | Demo mode: stores mock user locally |
 | Request ride | `POST /api/matching/request-ride` | Error shown in UI with retry option |
-| Accept ride | `POST /api/trip/accept-ride` | Demo: ride accepted locally with toast |
-| Manual location | `POST /api/admin/manual-location` | Demo: toast confirms push |
-| Manual override toggle | `POST /api/admin/manual-override` | Demo: toggle updates UI only |
+| Driver requests | `GET /api/matching/driver-requests/:driver_id` | Returns queued requests for the selected driver |
+| Driver action | `POST /api/matching/driver-requests/:driver_id/action` | Accept/reject request and update per-driver queue |
+| Accept ride | `POST /api/trip/accept-ride` | Emits `ride-accepted` event |
+| Complete ride | `POST /api/trip/complete-ride` | Emits `ride-completed` event |
+| Manual location | `POST /api/tracking/manual-location` | Saves manual coordinates in Redis GEO set |
+| Manual override toggle | `POST /api/tracking/manual-override` | Persists manual override state in Redis |
 | Realtime updates | `VITE_WS_URL` or `VITE_SSE_URL` | Falls back to mock adapter (simulated driver movement) |
 
 ---
