@@ -7,6 +7,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 
 const DEFAULT_COORDS = { lat: 19.076, lng: 72.8777 }; // Mumbai
+const TRIP_STATUS_POLL_INTERVAL_MS = 3000;
 
 export default function RiderView() {
   const { user } = useAuth();
@@ -56,7 +57,7 @@ export default function RiderView() {
     }
 
     syncTripStatus();
-    pollIntervalId = setInterval(syncTripStatus, 3000);
+    pollIntervalId = setInterval(syncTripStatus, TRIP_STATUS_POLL_INTERVAL_MS);
     return () => {
       active = false;
       if (pollIntervalId) clearInterval(pollIntervalId);
