@@ -40,16 +40,19 @@ export default function RiderView() {
       try {
         const trip = await getTripStatus(rideId);
         if (active) setTripSnapshot(trip);
-      } catch {
-        // ignore until trip is created/available
+      } catch (err) {
+        // Trip may not exist yet (404) until a driver accepts; ignore only that case.
+        if (err?.message && !err.message.includes("Trip not found")) {
+          console.warn("Failed to sync trip status", err);
+        }
       }
     }
 
     syncTripStatus();
-    const id = setInterval(syncTripStatus, 3000);
+    const pollIntervalId = setInterval(syncTripStatus, 3000);
     return () => {
       active = false;
-      clearInterval(id);
+      clearInterval(pollIntervalId);
     };
   }, [rideData?.ride_id]);
 
