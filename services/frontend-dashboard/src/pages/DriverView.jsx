@@ -63,7 +63,7 @@ export default function DriverView() {
 
   useEffect(() => {
     if (!selectedDriverId) return;
-    const id = setInterval(() => fetchRequests({ silent: true }), 3000);
+    const id = setInterval(() => fetchRequests({ silent: true }), 5000);
     return () => clearInterval(id);
   }, [fetchRequests, selectedDriverId]);
 

@@ -85,7 +85,14 @@ app.get("/drivers", readLimiter, async (_req, res) => {
 
 app.get("/manual-overrides", readLimiter, async (_req, res) => {
   try {
-    const keys = await redis.keys(`${REDIS_KEYS.DRIVER_MANUAL_PREFIX}*`);
+    const keys = [];
+    let cursor = "0";
+    const pattern = `${REDIS_KEYS.DRIVER_MANUAL_PREFIX}*`;
+    do {
+      const [nextCursor, found] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+      cursor = nextCursor;
+      keys.push(...found);
+    } while (cursor !== "0");
     const driver_ids = keys.map((key) => key.replace(REDIS_KEYS.DRIVER_MANUAL_PREFIX, ""));
     res.json({ driver_ids });
   } catch (err) {
