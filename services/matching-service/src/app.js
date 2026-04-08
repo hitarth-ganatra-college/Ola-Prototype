@@ -18,12 +18,36 @@ const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "matching-service" }));
 
+// Simple in-memory rate limiter: max 10 ride requests per rider per minute
+const rideRateLimits = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 10;
+
+function rideRateLimiter(req, res, next) {
+  const key = req.body?.rider_id || req.ip;
+  const now = Date.now();
+  const entry = rideRateLimits.get(key) || { count: 0, windowStart: now };
+
+  if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    entry.count = 0;
+    entry.windowStart = now;
+  }
+
+  entry.count += 1;
+  rideRateLimits.set(key, entry);
+
+  if (entry.count > RATE_LIMIT_MAX) {
+    return res.status(429).json({ error: "Too many ride requests. Please wait before trying again." });
+  }
+  next();
+}
+
 /**
  * POST /request-ride
  * Body: { rider_id, lat, lng, radius_km? }
  * Returns nearest 3 drivers and emits ride-requested event to Kafka
  */
-app.post("/request-ride", async (req, res) => {
+app.post("/request-ride", rideRateLimiter, async (req, res) => {
   const { rider_id, lat, lng, radius_km = 5 } = req.body;
   if (!rider_id || lat == null || lng == null) {
     return res.status(400).json({ error: "rider_id, lat, lng required" });
