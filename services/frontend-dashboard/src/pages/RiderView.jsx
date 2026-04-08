@@ -35,11 +35,18 @@ export default function RiderView() {
 
     let active = true;
     const rideId = rideData.ride_id;
+    let pollIntervalId = null;
 
     async function syncTripStatus() {
       try {
         const trip = await getTripStatus(rideId);
-        if (active) setTripSnapshot(trip);
+        if (active) {
+          setTripSnapshot(trip);
+          if (trip?.status === "COMPLETED" && pollIntervalId) {
+            clearInterval(pollIntervalId);
+            pollIntervalId = null;
+          }
+        }
       } catch (err) {
         // Trip may not exist yet (404) until a driver accepts; ignore only that case.
         if (err?.message && !err.message.includes("Trip not found")) {
@@ -49,10 +56,10 @@ export default function RiderView() {
     }
 
     syncTripStatus();
-    const pollIntervalId = setInterval(syncTripStatus, 3000);
+    pollIntervalId = setInterval(syncTripStatus, 3000);
     return () => {
       active = false;
-      clearInterval(pollIntervalId);
+      if (pollIntervalId) clearInterval(pollIntervalId);
     };
   }, [rideData?.ride_id]);
 
@@ -64,11 +71,11 @@ export default function RiderView() {
 
   async function handleRequestRide() {
     setLoading(true);
-      setError(null);
-      setRideData(null);
-      setUiStatus("Searching");
-      setTripSnapshot(null);
-      const toastId = toast.loading("Finding nearest drivers...");
+    setError(null);
+    setRideData(null);
+    setUiStatus("Searching");
+    setTripSnapshot(null);
+    const toastId = toast.loading("Finding nearest drivers...");
 
     try {
       const riderId = user?.id || "rider-001";
