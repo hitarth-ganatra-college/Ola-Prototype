@@ -105,7 +105,7 @@ function randomOffset(range = 0.05) {
 }
 
 let mockDrivers = Array.from({ length: 12 }, (_, i) => ({
-  driver_id: `driver-sim-${String(i + 1).padStart(3, "0")}`,
+  driver_id: `sim-driver-${String(i + 1).padStart(3, "0")}`,
   lat: CENTER_LAT + randomOffset(),
   lng: CENTER_LNG + randomOffset(),
 }));

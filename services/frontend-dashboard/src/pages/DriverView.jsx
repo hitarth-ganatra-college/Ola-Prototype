@@ -1,48 +1,133 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth.jsx";
-import { acceptRide } from "../services/rideService.js";
+import { useDriverLocations } from "../hooks/useDriverLocations.js";
+import { acceptRide, completeRide, getDriverRequests, updateDriverRequestAction } from "../services/rideService.js";
 import { useTripStatus } from "../hooks/useTripStatus.js";
 import StatusBadge from "../components/StatusBadge.jsx";
-
-// TODO: Replace with real Kafka/SSE ride-request feed from backend.
-// For now, ride requests arrive via mock data or the trip_update realtime event.
-const MOCK_REQUESTS = [
-  { ride_id: "ride-demo-001", rider_id: "rider-001", rider_lat: 19.076,  rider_lng: 72.8777, distance_km: 1.2 },
-  { ride_id: "ride-demo-002", rider_id: "rider-001", rider_lat: 19.0820, rider_lng: 72.8900, distance_km: 2.7 },
-];
+import { DRIVER_PROFILE_IDS } from "../constants/drivers.js";
 
 export default function DriverView() {
   const { user } = useAuth();
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
-  const [activeRide, setActiveRide] = useState(null);
+  const liveLocations = useDriverLocations();
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [requests, setRequests] = useState([]);
+  const [activeRides, setActiveRides] = useState({});
   const [accepting, setAccepting] = useState(null); // ride_id being accepted
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [rejecting, setRejecting] = useState(null);
+
+  const driverOptions = useMemo(() => {
+    const ids = new Set([
+      ...(user?.id ? [user.id] : []),
+      ...DRIVER_PROFILE_IDS,
+      ...Object.keys(liveLocations),
+    ]);
+    return Array.from(ids).sort();
+  }, [liveLocations, user?.id]);
+
+  useEffect(() => {
+    if (!selectedDriverId) {
+      setSelectedDriverId(user?.id || driverOptions[0] || "");
+      return;
+    }
+    if (!driverOptions.includes(selectedDriverId)) {
+      setSelectedDriverId(driverOptions[0] || "");
+    }
+  }, [driverOptions, selectedDriverId, user?.id]);
+
+  const activeRide = selectedDriverId ? activeRides[selectedDriverId] || null : null;
 
   const realtimeStatus = useTripStatus(activeRide?.ride_id);
   const displayStatus = realtimeStatus || activeRide?.status;
+
+  const fetchRequests = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!selectedDriverId) return;
+      if (!silent) setLoadingRequests(true);
+      try {
+        const data = await getDriverRequests(selectedDriverId);
+        setRequests(data.requests || []);
+      } catch (err) {
+        if (!silent) toast.error(err.message || "Failed to load driver requests");
+      } finally {
+        if (!silent) setLoadingRequests(false);
+      }
+    },
+    [selectedDriverId]
+  );
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  useEffect(() => {
+    if (!selectedDriverId) return;
+    const id = setInterval(() => fetchRequests({ silent: true }), 5000);
+    return () => clearInterval(id);
+  }, [fetchRequests, selectedDriverId]);
 
   async function handleAccept(rideReq) {
     setAccepting(rideReq.ride_id);
     const toastId = toast.loading(`Accepting ride ${rideReq.ride_id}…`);
     try {
-      const driverId = user?.id || "driver-001";
-      await acceptRide({ ride_id: rideReq.ride_id, driver_id: driverId });
-      setActiveRide({ ...rideReq, status: "ACCEPTED" });
+      await updateDriverRequestAction({
+        driver_id: selectedDriverId,
+        ride_id: rideReq.ride_id,
+        action: "accept",
+      });
+      await acceptRide({
+        ride_id: rideReq.ride_id,
+        driver_id: selectedDriverId,
+        rider_id: rideReq.rider_id,
+      });
+      setActiveRides((prev) => ({
+        ...prev,
+        [selectedDriverId]: { ...rideReq, status: "ACCEPTED", driver_id: selectedDriverId },
+      }));
       setRequests((prev) => prev.filter((r) => r.ride_id !== rideReq.ride_id));
       toast.success("Ride accepted!", { id: toastId });
     } catch (err) {
-      // Backend may not be running — simulate acceptance for demo
-      setActiveRide({ ...rideReq, status: "ACCEPTED" });
-      setRequests((prev) => prev.filter((r) => r.ride_id !== rideReq.ride_id));
-      toast(`Demo: ride ${rideReq.ride_id} accepted (offline)`, { id: toastId, icon: "🔧" });
+      toast.error(err.message || "Failed to accept ride", { id: toastId });
     } finally {
       setAccepting(null);
     }
   }
 
-  function handleCompleteRide() {
-    toast.success("Trip completed!");
-    setActiveRide(null);
+  async function handleReject(rideReq) {
+    setRejecting(rideReq.ride_id);
+    try {
+      await updateDriverRequestAction({
+        driver_id: selectedDriverId,
+        ride_id: rideReq.ride_id,
+        action: "reject",
+      });
+      setRequests((prev) => prev.filter((r) => r.ride_id !== rideReq.ride_id));
+      toast("Ride request rejected", { icon: "🛑" });
+    } catch (err) {
+      toast.error(err.message || "Failed to reject ride request");
+    } finally {
+      setRejecting(null);
+    }
+  }
+
+  async function handleCompleteRide() {
+    if (!activeRide) return;
+    try {
+      await completeRide({
+        ride_id: activeRide.ride_id,
+        driver_id: selectedDriverId,
+        distance_km: activeRide.distance_km,
+      });
+      toast.success("Trip completed!");
+      setActiveRides((prev) => {
+        const next = { ...prev };
+        delete next[selectedDriverId];
+        return next;
+      });
+    } catch (err) {
+      toast.error(err.message || "Failed to complete trip");
+    }
   }
 
   return (
@@ -51,8 +136,23 @@ export default function DriverView() {
       <div>
         <h2 className="text-2xl font-bold text-white">Driver Dashboard</h2>
         <p className="text-gray-400 text-sm mt-1">
-          Welcome{user ? `, ${user.username}` : ""}. Manage your incoming ride requests.
+          Welcome{user ? `, ${user.username}` : ""}. Choose a driver profile and manage incoming requests.
         </p>
+      </div>
+
+      <div className="card">
+        <label className="block text-xs text-gray-400 mb-1.5">Acting as driver</label>
+        <select
+          className="input-field"
+          value={selectedDriverId}
+          onChange={(e) => setSelectedDriverId(e.target.value)}
+        >
+          {driverOptions.map((id) => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Active trip card */}
@@ -115,7 +215,9 @@ export default function DriverView() {
         {requests.length === 0 && !activeRide && (
           <div className="card text-center py-10">
             <p className="text-3xl mb-3">🕐</p>
-            <p className="text-gray-300 font-medium">No pending requests</p>
+            <p className="text-gray-300 font-medium">
+              {loadingRequests ? "Loading requests..." : "No pending requests"}
+            </p>
             <p className="text-gray-500 text-sm mt-1">
               New ride requests will appear here automatically.
             </p>
@@ -167,6 +269,14 @@ export default function DriverView() {
                 ) : (
                   "✅ Accept Ride"
                 )}
+              </button>
+
+              <button
+                onClick={() => handleReject(req)}
+                disabled={rejecting === req.ride_id || activeRide !== null}
+                className="w-full mt-2 text-sm py-2.5 px-4 rounded-lg font-medium bg-red-900/30 border border-red-700/50 text-red-300 hover:bg-red-900/50 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {rejecting === req.ride_id ? "Rejecting..." : "🛑 Reject Ride"}
               </button>
             </div>
           ))}

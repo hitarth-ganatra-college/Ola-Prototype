@@ -16,8 +16,38 @@ const kafka = new Kafka({
 });
 const producer = kafka.producer();
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+const DRIVER_REQUESTS_PREFIX = "driver:rideRequests:";
+const RIDE_TARGETS_PREFIX = "ride:targets:";
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "matching-service" }));
+
+async function getDriverQueue(driverId) {
+  const raw = await redis.lrange(`${DRIVER_REQUESTS_PREFIX}${driverId}`, 0, -1);
+  return raw
+    .map((item) => {
+      try {
+        return JSON.parse(item);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+async function setDriverQueue(driverId, queue) {
+  const key = `${DRIVER_REQUESTS_PREFIX}${driverId}`;
+  const payload = queue.map((item) => JSON.stringify(item));
+  const tx = redis.multi();
+  tx.del(key);
+  if (payload.length) tx.rpush(key, ...payload);
+  await tx.exec();
+}
+
+async function removeRideFromDriverQueue(driverId, rideId) {
+  const queue = await getDriverQueue(driverId);
+  const next = queue.filter((entry) => entry.ride_id !== rideId);
+  await setDriverQueue(driverId, next);
+}
 
 const rideRequestLimiter = rateLimit({
   windowMs: 60_000,
@@ -26,6 +56,13 @@ const rideRequestLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many ride requests. Please wait before trying again." },
   keyGenerator: (req) => req.body?.rider_id || req.ip,
+});
+const driverRequestsLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.params?.driver_id || req.ip,
 });
 
 /**
@@ -72,6 +109,10 @@ app.post("/request-ride", rideRequestLimiter, async (req, res) => {
       }
     }
 
+    if (freshDrivers.length === 0) {
+      return res.status(404).json({ error: "No available drivers found nearby" });
+    }
+
     const ride_id = uuidv4();
     const event = {
       ride_id,
@@ -87,10 +128,58 @@ app.post("/request-ride", rideRequestLimiter, async (req, res) => {
       messages: [{ key: ride_id, value: JSON.stringify(event) }],
     });
 
+    const requestRecord = { ...event, status: "PENDING" };
+    const tx = redis.multi();
+    for (const driver of freshDrivers) {
+      tx.rpush(`${DRIVER_REQUESTS_PREFIX}${driver.driver_id}`, JSON.stringify(requestRecord));
+    }
+    tx.set(`${RIDE_TARGETS_PREFIX}${ride_id}`, JSON.stringify(freshDrivers.map((d) => d.driver_id)), "EX", 3600);
+    await tx.exec();
+
     console.log(`[Matching] ride_id=${ride_id} rider=${rider_id} drivers=${freshDrivers.length}`);
     res.json({ ride_id, nearest_drivers: freshDrivers });
   } catch (err) {
     console.error("[Matching] request-ride error", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/driver-requests/:driver_id", driverRequestsLimiter, async (req, res) => {
+  try {
+    const queue = await getDriverQueue(req.params.driver_id);
+    res.json({
+      driver_id: req.params.driver_id,
+      requests: queue.filter((item) => item.status !== "REJECTED"),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/driver-requests/:driver_id/action", driverRequestsLimiter, async (req, res) => {
+  const { ride_id, action } = req.body;
+  const driverId = req.params.driver_id;
+  if (!ride_id || !["accept", "reject"].includes(action)) {
+    return res.status(400).json({ error: "ride_id and action(accept|reject) are required" });
+  }
+
+  try {
+    if (action === "accept") {
+      const targetsRaw = await redis.get(`${RIDE_TARGETS_PREFIX}${ride_id}`);
+      let targets = targetsRaw ? JSON.parse(targetsRaw) : null;
+      if (!targets) {
+        const queue = await getDriverQueue(driverId);
+        const accepted = queue.find((entry) => entry.ride_id === ride_id);
+        targets = accepted?.nearest_drivers?.map((d) => d.driver_id) || [driverId];
+      }
+      await Promise.all(targets.map((id) => removeRideFromDriverQueue(id, ride_id)));
+      await redis.del(`${RIDE_TARGETS_PREFIX}${ride_id}`);
+      return res.json({ ok: true, action, ride_id, driver_id: driverId, cleared_for: targets });
+    }
+
+    await removeRideFromDriverQueue(driverId, ride_id);
+    res.json({ ok: true, action, ride_id, driver_id: driverId });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

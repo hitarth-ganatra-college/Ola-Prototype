@@ -9,7 +9,7 @@ export const API_BASE = {
   matching: import.meta.env.VITE_MATCHING_URL || "/api/matching",
   trip: import.meta.env.VITE_TRIP_URL || "/api/trip",
   tracking: import.meta.env.VITE_TRACKING_URL || "/api/tracking",
-  admin: import.meta.env.VITE_ADMIN_URL || "/api/admin",
+  admin: import.meta.env.VITE_ADMIN_URL || "/api/tracking",
 };
 
 /**

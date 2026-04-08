@@ -31,3 +31,7 @@ export async function toggleManualOverride({ driver_id, enabled }) {
     body: JSON.stringify({ driver_id, enabled }),
   });
 }
+
+export async function getManualOverrides() {
+  return apiFetch(`${API_BASE.admin}/manual-overrides`);
+}
