@@ -1,5 +1,6 @@
 import { redis } from "../config/redis.js";
 import { producer, TOPICS } from "../config/kafka.js";
+import { REDIS_KEYS } from "../../../../shared/topics.js";
 import { fallbackCounter } from "../metrics/prometheus.js";
 
 export async function persistFallback(eventType, payload) {
@@ -12,7 +13,7 @@ export async function persistFallback(eventType, payload) {
 
   const envelopeStr = JSON.stringify(envelope);
 
-  await redis.lpush("pending_writes", envelopeStr);
+  await redis.lpush(REDIS_KEYS.PENDING_WRITES, envelopeStr);
   await producer.send({
     topic: TOPICS.PERSISTENCE_RECOVERY,
     messages: [
