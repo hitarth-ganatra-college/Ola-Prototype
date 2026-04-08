@@ -56,7 +56,6 @@ export default function RiderView() {
     }
 
     syncTripStatus();
-    if (pollIntervalId) clearInterval(pollIntervalId);
     pollIntervalId = setInterval(syncTripStatus, 3000);
     return () => {
       active = false;
