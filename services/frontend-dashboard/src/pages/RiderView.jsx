@@ -49,13 +49,14 @@ export default function RiderView() {
         }
       } catch (err) {
         // Trip may not exist yet (404) until a driver accepts; ignore only that case.
-        if (err?.message && !err.message.includes("Trip not found")) {
+        if (err?.status !== 404) {
           console.warn("Failed to sync trip status", err);
         }
       }
     }
 
     syncTripStatus();
+    if (pollIntervalId) clearInterval(pollIntervalId);
     pollIntervalId = setInterval(syncTripStatus, 3000);
     return () => {
       active = false;
