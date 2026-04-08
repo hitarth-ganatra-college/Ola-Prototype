@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { useTripStatus } from "../hooks/useTripStatus.js";
-import { requestRide } from "../services/rideService.js";
+import { getTripStatus, requestRide } from "../services/rideService.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 
 const DEFAULT_COORDS = { lat: 19.076, lng: 72.8777 }; // Mumbai
+const TRIP_STATUS_POLL_INTERVAL_MS = 3000;
 
 export default function RiderView() {
   const { user } = useAuth();
@@ -14,18 +15,67 @@ export default function RiderView() {
   const [error, setError] = useState(null);
   const [rideData, setRideData] = useState(null); // { ride_id, nearest_drivers }
   const [uiStatus, setUiStatus] = useState(null);
+  const [tripSnapshot, setTripSnapshot] = useState(null);
 
   // Subscribe to realtime trip updates from WebSocket/SSE
   const realtimeStatus = useTripStatus(rideData?.ride_id);
 
+  function normalizeStatus(status) {
+    if (!status) return null;
+    if (status === "ACCEPTED") return "Assigned";
+    if (status === "COMPLETED") return "Completed";
+    if (status === "SYNCING") return "Syncing...";
+    return status;
+  }
+
+  useEffect(() => {
+    if (!rideData?.ride_id) {
+      setTripSnapshot(null);
+      return;
+    }
+
+    let active = true;
+    const rideId = rideData.ride_id;
+    let pollIntervalId = null;
+
+    async function syncTripStatus() {
+      try {
+        const trip = await getTripStatus(rideId);
+        if (active) {
+          setTripSnapshot(trip);
+          if (trip?.status === "COMPLETED" && pollIntervalId) {
+            clearInterval(pollIntervalId);
+            pollIntervalId = null;
+          }
+        }
+      } catch (err) {
+        // Trip may not exist yet (404) until a driver accepts; ignore only that case.
+        if (err?.status !== 404) {
+          console.warn("Failed to sync trip status", err);
+        }
+      }
+    }
+
+    syncTripStatus();
+    pollIntervalId = setInterval(syncTripStatus, TRIP_STATUS_POLL_INTERVAL_MS);
+    return () => {
+      active = false;
+      if (pollIntervalId) clearInterval(pollIntervalId);
+    };
+  }, [rideData?.ride_id]);
+
   // Merge local and realtime status
-  const displayStatus = realtimeStatus || uiStatus;
+  const displayStatus =
+    normalizeStatus(realtimeStatus) ||
+    normalizeStatus(tripSnapshot?.status) ||
+    normalizeStatus(uiStatus);
 
   async function handleRequestRide() {
     setLoading(true);
     setError(null);
     setRideData(null);
     setUiStatus("Searching");
+    setTripSnapshot(null);
     const toastId = toast.loading("Finding nearest drivers...");
 
     try {
@@ -72,6 +122,11 @@ export default function RiderView() {
               {rideData && (
                 <p className="text-xs text-gray-500 mt-2">
                   Ride ID: <code className="text-gray-400">{rideData.ride_id}</code>
+                </p>
+              )}
+              {tripSnapshot?.driver_id && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Driver: <span className="text-gray-300 font-medium">{tripSnapshot.driver_id}</span>
                 </p>
               )}
               {displayStatus === "Syncing..." && (
@@ -134,7 +189,7 @@ export default function RiderView() {
           <h3 className="text-sm font-semibold text-gray-300 mb-3">
             Nearest Drivers ({rideData.nearest_drivers.length})
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
             {rideData.nearest_drivers.map((d, idx) => (
               <div key={d.driver_id} className="card flex items-center gap-4">
                 <div className="w-10 h-10 bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-400 font-bold flex-shrink-0">

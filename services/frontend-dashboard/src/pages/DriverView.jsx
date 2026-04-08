@@ -142,17 +142,26 @@ export default function DriverView() {
 
       <div className="card">
         <label className="block text-xs text-gray-400 mb-1.5">Acting as driver</label>
-        <select
-          className="input-field"
-          value={selectedDriverId}
-          onChange={(e) => setSelectedDriverId(e.target.value)}
-        >
-          {driverOptions.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </select>
+        <p className="text-xs text-gray-500 mb-2">Scrollable list of available/simulated drivers</p>
+        <div className="max-h-52 overflow-y-auto pr-1 border border-gray-700 rounded-lg bg-gray-800/60">
+          {driverOptions.map((id) => {
+            const isSelected = selectedDriverId === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSelectedDriverId(id)}
+                className={`w-full text-left px-3 py-2 text-sm border-b border-gray-700 last:border-b-0 transition-colors ${
+                  isSelected
+                    ? "bg-brand-gold/20 text-white"
+                    : "text-gray-300 hover:bg-gray-700/70"
+                }`}
+              >
+                {id}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Active trip card */}
