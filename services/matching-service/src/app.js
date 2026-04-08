@@ -57,6 +57,13 @@ const rideRequestLimiter = rateLimit({
   message: { error: "Too many ride requests. Please wait before trying again." },
   keyGenerator: (req) => req.body?.rider_id || req.ip,
 });
+const driverRequestsLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.params?.driver_id || req.ip,
+});
 
 /**
  * POST /request-ride
@@ -103,7 +110,7 @@ app.post("/request-ride", rideRequestLimiter, async (req, res) => {
     }
 
     if (freshDrivers.length === 0) {
-      return res.status(404).json({ error: "No fresh drivers available nearby" });
+      return res.status(404).json({ error: "No available drivers found nearby" });
     }
 
     const ride_id = uuidv4();
@@ -137,7 +144,7 @@ app.post("/request-ride", rideRequestLimiter, async (req, res) => {
   }
 });
 
-app.get("/driver-requests/:driver_id", async (req, res) => {
+app.get("/driver-requests/:driver_id", driverRequestsLimiter, async (req, res) => {
   try {
     const queue = await getDriverQueue(req.params.driver_id);
     res.json({
@@ -149,7 +156,7 @@ app.get("/driver-requests/:driver_id", async (req, res) => {
   }
 });
 
-app.post("/driver-requests/:driver_id/action", async (req, res) => {
+app.post("/driver-requests/:driver_id/action", driverRequestsLimiter, async (req, res) => {
   const { ride_id, action } = req.body;
   const driverId = req.params.driver_id;
   if (!ride_id || !["accept", "reject"].includes(action)) {

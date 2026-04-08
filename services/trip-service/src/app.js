@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { connectMongo } from "./config/mongo.js";
 import { redis } from "./config/redis.js";
 import { initKafka, producer, TOPICS } from "./config/kafka.js";
@@ -12,6 +13,18 @@ import { Trip } from "./models/Trip.js";
 
 const app = express();
 app.use(express.json());
+const tripWriteLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const tripReadLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "trip-service" }));
 
@@ -20,7 +33,7 @@ app.get("/metrics", async (_req, res) => {
   res.end(await register.metrics());
 });
 
-app.post("/accept-ride", async (req, res) => {
+app.post("/accept-ride", tripWriteLimiter, async (req, res) => {
   const { ride_id, driver_id, rider_id } = req.body;
   if (!ride_id || !driver_id) {
     return res.status(400).json({ error: "ride_id and driver_id are required" });
@@ -44,7 +57,7 @@ app.post("/accept-ride", async (req, res) => {
   }
 });
 
-app.post("/complete-ride", async (req, res) => {
+app.post("/complete-ride", tripWriteLimiter, async (req, res) => {
   const { ride_id, driver_id, fare, distance_km } = req.body;
   if (!ride_id || !driver_id) {
     return res.status(400).json({ error: "ride_id and driver_id are required" });
@@ -69,7 +82,7 @@ app.post("/complete-ride", async (req, res) => {
   }
 });
 
-app.get("/trip/:ride_id", async (req, res) => {
+app.get("/trip/:ride_id", tripReadLimiter, async (req, res) => {
   try {
     const trip = await Trip.findOne({ ride_id: req.params.ride_id }).lean();
     if (!trip) return res.status(404).json({ error: "Trip not found" });

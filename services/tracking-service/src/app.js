@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { Kafka } from "kafkajs";
 import Redis from "ioredis";
 import { TOPICS, REDIS_KEYS } from "../../../shared/topics.js";
@@ -14,6 +15,18 @@ const kafka = new Kafka({
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 const DRIVER_TTL_SECONDS = 30;
+const readLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const writeLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 async function startLocationConsumer() {
   const consumer = kafka.consumer({ groupId: "tracking-service-location" });
@@ -42,7 +55,7 @@ async function startLocationConsumer() {
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "tracking-service" }));
 
-app.get("/drivers", async (_req, res) => {
+app.get("/drivers", readLimiter, async (_req, res) => {
   try {
     const driverIds = await redis.zrange(REDIS_KEYS.ACTIVE_DRIVERS, 0, -1);
     if (!driverIds.length) return res.json([]);
@@ -70,7 +83,7 @@ app.get("/drivers", async (_req, res) => {
   }
 });
 
-app.get("/manual-overrides", async (_req, res) => {
+app.get("/manual-overrides", readLimiter, async (_req, res) => {
   try {
     const keys = await redis.keys(`${REDIS_KEYS.DRIVER_MANUAL_PREFIX}*`);
     const driver_ids = keys.map((key) => key.replace(REDIS_KEYS.DRIVER_MANUAL_PREFIX, ""));
@@ -80,7 +93,7 @@ app.get("/manual-overrides", async (_req, res) => {
   }
 });
 
-app.post("/manual-override", async (req, res) => {
+app.post("/manual-override", writeLimiter, async (req, res) => {
   const { driver_id, enabled } = req.body;
   if (!driver_id || typeof enabled !== "boolean") {
     return res.status(400).json({ error: "driver_id and enabled(boolean) are required" });
@@ -99,7 +112,7 @@ app.post("/manual-override", async (req, res) => {
   }
 });
 
-app.post("/manual-location", async (req, res) => {
+app.post("/manual-location", writeLimiter, async (req, res) => {
   const { driver_id, lat, lng } = req.body;
   if (!driver_id || !Number.isFinite(lat) || !Number.isFinite(lng)) {
     return res.status(400).json({ error: "driver_id, lat(number), lng(number) are required" });

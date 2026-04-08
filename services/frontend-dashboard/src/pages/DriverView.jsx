@@ -5,8 +5,7 @@ import { useDriverLocations } from "../hooks/useDriverLocations.js";
 import { acceptRide, completeRide, getDriverRequests, updateDriverRequestAction } from "../services/rideService.js";
 import { useTripStatus } from "../hooks/useTripStatus.js";
 import StatusBadge from "../components/StatusBadge.jsx";
-
-const SEEDED_DRIVER_IDS = ["driver-001", "driver-002", "driver-003", "driver-004"];
+import { DRIVER_PROFILE_IDS } from "../constants/drivers.js";
 
 export default function DriverView() {
   const { user } = useAuth();
@@ -21,7 +20,7 @@ export default function DriverView() {
   const driverOptions = useMemo(() => {
     const ids = new Set([
       ...(user?.id ? [user.id] : []),
-      ...SEEDED_DRIVER_IDS,
+      ...DRIVER_PROFILE_IDS,
       ...Object.keys(liveLocations),
     ]);
     return Array.from(ids).sort();

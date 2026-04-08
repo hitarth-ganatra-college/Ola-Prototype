@@ -3,9 +3,7 @@ import toast from "react-hot-toast";
 import { useDriverLocations } from "../hooks/useDriverLocations.js";
 import { getActiveDrivers, getManualOverrides, pushManualLocation, toggleManualOverride } from "../services/driverService.js";
 import MapView from "../components/MapView.jsx";
-
-// The 4 manual-override driver IDs seeded in the identity service
-const MANUAL_DRIVER_IDS = ["driver-001", "driver-002", "driver-003", "driver-004"];
+import { DRIVER_PROFILE_IDS } from "../constants/drivers.js";
 
 export default function AdminMap() {
   const liveLocations = useDriverLocations(); // all drivers
@@ -21,7 +19,7 @@ export default function AdminMap() {
 
   const selectableDriverIds = useMemo(() => {
     const ids = new Set([
-      ...MANUAL_DRIVER_IDS,
+      ...DRIVER_PROFILE_IDS,
       ...Object.keys(mergedLocations),
       ...Object.keys(manualToggles),
     ]);
@@ -119,6 +117,10 @@ export default function AdminMap() {
     const lng = Number(raw.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       toast.error("Enter valid numeric latitude and longitude");
+      return;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast.error("Latitude must be -90..90 and longitude must be -180..180");
       return;
     }
     try {
