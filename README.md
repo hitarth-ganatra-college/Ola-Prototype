@@ -32,7 +32,7 @@ Rider App ──► Matching Service ──► Redis GEOSEARCH ──► Kafka (
 | `tracking-service` | 4003 | Consumes `location-updates`, writes `GEOADD active_drivers` with 30s TTL |
 | `matching-service` | 4004 | `POST /request-ride` → GEOSEARCH nearest 3 → emit `ride-requested` |
 | `trip-service` | 4005 | Consumes `ride-accepted`/`ride-completed`, persists to MongoDB via circuit breaker |
-| `frontend-dashboard` | 5173 | React placeholder UI (Rider, Driver, Admin map views) |
+| `frontend-dashboard` | 5173 | **React + Tailwind + Google Maps UI** — Rider, Driver, Admin views with realtime updates |
 
 ---
 
@@ -81,6 +81,80 @@ cd services/ingestion-simulator && npm install && npm start
 # Frontend Dashboard
 cd services/frontend-dashboard && npm install && npm run dev
 ```
+
+---
+
+## Frontend Setup
+
+### Tech Stack
+- **React 18** + **Vite 5** (hot reload, instant startup)
+- **Tailwind CSS** — utility-first dark-theme UI
+- **React Router v6** — client-side routing per role
+- **@react-google-maps/api** — Google Maps with draggable markers
+- **react-hot-toast** — toast/snackbar feedback
+- **WebSocket/SSE adapter** — realtime location & trip updates (with mock fallback)
+
+### Required Environment Variables
+
+Copy the frontend env example and add your Google Maps key:
+
+```bash
+cp services/frontend-dashboard/.env.example services/frontend-dashboard/.env
+# Then edit .env and replace YOUR_KEY_HERE with your actual key
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_GOOGLE_MAPS_API_KEY` | ✅ For map | Get from [Google Cloud Console](https://console.cloud.google.com/). Enable **Maps JavaScript API**. |
+| `VITE_WS_URL` | Optional | WebSocket URL for realtime updates (e.g. `ws://localhost:4006`). Defaults to mock adapter. |
+| `VITE_SSE_URL` | Optional | SSE URL for realtime updates. Fallback before mock adapter. |
+
+> If `VITE_GOOGLE_MAPS_API_KEY` is missing or set to `YOUR_KEY_HERE`, the Admin map shows a clear placeholder with instructions — the rest of the app works normally.
+
+### Run Frontend
+
+```bash
+cd services/frontend-dashboard
+npm install
+npm run dev
+# Open http://localhost:5173
+```
+
+### Role Flows
+
+#### 🚕 Rider Flow
+1. Open `http://localhost:5173` → redirected to Login
+2. Click **"Rider"** demo button (or login with `rider1` / `pass123`)
+3. Click **"Request Ride"** — calls `POST /api/matching/request-ride`
+4. View nearest 3 drivers with distances
+5. Trip status updates via WebSocket (`Searching → Assigned → Syncing... → Completed`)
+6. `Syncing...` status appears when MongoDB is down and Redis fallback is active
+
+#### 🚗 Driver Flow
+1. Login with `driver1` / `pass123` (or any of `driver1`–`driver4`)
+2. See incoming ride requests panel (mock requests shown if backend offline)
+3. Click **"Accept Ride"** — calls `POST /api/trip/accept-ride` → emits `ride-accepted` Kafka event
+4. Active trip card shows trip details + status badge
+5. Click **"Mark Trip Completed"** to end trip
+
+#### 🗺️ Admin/Debug Flow
+1. Login with any account → click **Admin View** in sidebar
+2. Google Map shows all live driver markers (green = simulated, red = manual override)
+3. Use **"Enable Override"** toggle per driver to enable drag-to-update
+4. Drag a manual driver marker → pushes new coords to backend (`/api/admin/manual-location`)
+5. Backend sets `driver:manual:<id>=1` in Redis, pausing simulation for that driver
+6. Use **"Disable Override"** to resume simulation
+
+### Integration Assumptions
+
+| Frontend call | Backend endpoint | Behaviour if backend offline |
+|---|---|---|
+| Login | `POST /api/identity/login` | Demo mode: stores mock user locally |
+| Request ride | `POST /api/matching/request-ride` | Error shown in UI with retry option |
+| Accept ride | `POST /api/trip/accept-ride` | Demo: ride accepted locally with toast |
+| Manual location | `POST /api/admin/manual-location` | Demo: toast confirms push |
+| Manual override toggle | `POST /api/admin/manual-override` | Demo: toggle updates UI only |
+| Realtime updates | `VITE_WS_URL` or `VITE_SSE_URL` | Falls back to mock adapter (simulated driver movement) |
 
 ---
 

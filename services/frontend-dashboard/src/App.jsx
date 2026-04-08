@@ -1,28 +1,61 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
+import Layout from "./components/Layout.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 import RiderView from "./pages/RiderView.jsx";
 import DriverView from "./pages/DriverView.jsx";
 import AdminMap from "./pages/AdminMap.jsx";
+import { connect, disconnect } from "./ws/socketClient.js";
+
+// Start the realtime adapter once on mount
+function RealtimeBootstrap() {
+  useEffect(() => {
+    connect();
+    return () => disconnect();
+  }, []);
+  return null;
+}
+
+function RequireAuth({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function AppRoutes() {
+  return (
+    <>
+      <RealtimeBootstrap />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <Layout>
+                <Routes>
+                  <Route path="/rider"  element={<RiderView />} />
+                  <Route path="/driver" element={<DriverView />} />
+                  <Route path="/admin"  element={<AdminMap />} />
+                  <Route path="*"       element={<Navigate to="/rider" replace />} />
+                </Routes>
+              </Layout>
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </>
+  );
+}
 
 export default function App() {
-  const [view, setView] = useState("rider");
-
   return (
-    <div style={{ fontFamily: "sans-serif", padding: "1rem" }}>
-      <h1>🚗 Project Velocity Dashboard</h1>
-      <nav style={{ marginBottom: "1rem" }}>
-        {["rider", "driver", "admin"].map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{ marginRight: "0.5rem", fontWeight: view === v ? "bold" : "normal" }}
-          >
-            {v.charAt(0).toUpperCase() + v.slice(1)} View
-          </button>
-        ))}
-      </nav>
-      {view === "rider" && <RiderView />}
-      {view === "driver" && <DriverView />}
-      {view === "admin" && <AdminMap />}
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
