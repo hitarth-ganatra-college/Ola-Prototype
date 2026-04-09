@@ -32,7 +32,7 @@ Rider App ──► Matching Service ──► Redis GEOSEARCH ──► Kafka (
 | `tracking-service` | 4003 | Consumes `location-updates`, writes `GEOADD active_drivers` with 30s TTL |
 | `matching-service` | 4004 | `POST /request-ride` → GEOSEARCH nearest 3 → emit `ride-requested` |
 | `trip-service` | 4005 | Consumes `ride-accepted`/`ride-completed`, persists to MongoDB via circuit breaker |
-| `frontend-dashboard` | 5173 | **React + Tailwind + Google Maps UI** — Rider, Driver, Admin views with realtime updates |
+| `frontend-dashboard` | 5173 | **React + Tailwind + MapTiler/Leaflet UI** — Rider, Driver, Admin views with realtime updates |
 
 ---
 
@@ -90,13 +90,13 @@ cd services/frontend-dashboard && npm install && npm run dev
 - **React 18** + **Vite 5** (hot reload, instant startup)
 - **Tailwind CSS** — utility-first dark-theme UI
 - **React Router v6** — client-side routing per role
-- **@react-google-maps/api** — Google Maps with draggable markers
+- **react-leaflet + leaflet** — Leaflet map with MapTiler tiles and draggable markers
 - **react-hot-toast** — toast/snackbar feedback
 - **WebSocket/SSE adapter** — realtime location & trip updates (with mock fallback)
 
 ### Required Environment Variables
 
-Copy the frontend env example and add your Google Maps key:
+Copy the frontend env example and add your MapTiler key:
 
 ```bash
 cp services/frontend-dashboard/.env.example services/frontend-dashboard/.env
@@ -105,11 +105,11 @@ cp services/frontend-dashboard/.env.example services/frontend-dashboard/.env
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_GOOGLE_MAPS_API_KEY` | ✅ For map | Get from [Google Cloud Console](https://console.cloud.google.com/). Enable **Maps JavaScript API**. |
+| `VITE_MAPTILER_API_KEY` | ✅ For map | Get from [MapTiler Cloud](https://cloud.maptiler.com/account/keys/). Free tier available. |
 | `VITE_WS_URL` | Optional | WebSocket URL for realtime updates (e.g. `ws://localhost:4006`). Defaults to mock adapter. |
 | `VITE_SSE_URL` | Optional | SSE URL for realtime updates. Fallback before mock adapter. |
 
-> If `VITE_GOOGLE_MAPS_API_KEY` is missing or set to `YOUR_KEY_HERE`, the Admin map shows a clear placeholder with instructions — the rest of the app works normally.
+> If `VITE_MAPTILER_API_KEY` is missing or set to `YOUR_KEY_HERE`, the Admin map shows a clear placeholder with instructions — the rest of the app works normally.
 
 ### Run Frontend
 
@@ -140,7 +140,7 @@ npm run dev
 
 #### 🗺️ Admin/Debug Flow
 1. Login with any account → click **Admin View** in sidebar
-2. Google Map shows all live driver markers (green = simulated, red = manual override)
+2. MapTiler map shows all live driver markers (green = simulated, red = manual override)
 3. Use **"Enable Override"** toggle per driver to mark that driver manual in Redis (`driver:manual:<id>=1`)
 4. Enter latitude/longitude inputs for the enabled driver and click **Save Coordinates** (drag works too)
 5. Backend sets `driver:manual:<id>=1` in Redis, pausing simulation for that driver

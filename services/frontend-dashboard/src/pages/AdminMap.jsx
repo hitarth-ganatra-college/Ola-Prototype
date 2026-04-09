@@ -172,95 +172,97 @@ export default function AdminMap() {
         </div>
 
         {/* Sidebar: manual driver controls */}
-        <div className="w-64 flex flex-col gap-3 overflow-y-auto">
+        <div className="w-64 flex flex-col min-h-0">
           <h3 className="text-sm font-semibold text-gray-300">Manual Driver Controls</h3>
           <p className="text-xs text-gray-500 -mt-1">
             Enable override to drag a marker and push coordinates to Redis.
           </p>
 
-          {selectableDriverIds.map((id) => {
-            const isManual = !!manualToggles[id];
-            const loc = mergedLocations[id];
-            return (
-              <div
-                key={id}
-                className={`card border ${isManual ? "border-yellow-700/50 bg-yellow-950/20" : "border-gray-800"}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${loc ? "bg-emerald-400" : "bg-gray-600"}`} />
-                    <span className="text-sm font-medium text-white">{id}</span>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+            {selectableDriverIds.map((id) => {
+              const isManual = !!manualToggles[id];
+              const loc = mergedLocations[id];
+              return (
+                <div
+                  key={id}
+                  className={`card border ${isManual ? "border-yellow-700/50 bg-yellow-950/20" : "border-gray-800"}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${loc ? "bg-emerald-400" : "bg-gray-600"}`} />
+                      <span className="text-sm font-medium text-white">{id}</span>
+                    </div>
+                    {isManual && (
+                      <span className="text-xs bg-yellow-900 text-yellow-300 px-1.5 py-0.5 rounded">
+                        Manual
+                      </span>
+                    )}
                   </div>
+
+                  {loc ? (
+                    <p className="text-xs text-gray-500 mb-3">
+                      {loc.lat.toFixed(4)}°N, {loc.lng.toFixed(4)}°E
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600 mb-3">No location data</p>
+                  )}
+
+                  <button
+                    onClick={() => handleToggleOverride(id)}
+                    className={`w-full text-xs py-1.5 px-3 rounded-lg font-medium transition-colors border ${
+                      isManual
+                        ? "bg-yellow-900/40 border-yellow-700 text-yellow-300 hover:bg-yellow-900/60"
+                        : "bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white"
+                    }`}
+                  >
+                    {isManual ? "🔴 Disable Override" : "🟡 Enable Override"}
+                  </button>
+
                   {isManual && (
-                    <span className="text-xs bg-yellow-900 text-yellow-300 px-1.5 py-0.5 rounded">
-                      Manual
-                    </span>
+                    <div className="mt-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          step="any"
+                          value={manualCoords[id]?.lat ?? ""}
+                          onChange={(e) =>
+                            setManualCoords((prev) => ({
+                              ...prev,
+                              [id]: { ...(prev[id] || {}), lat: e.target.value },
+                            }))
+                          }
+                          placeholder="Latitude"
+                          className="input-field text-xs py-1.5"
+                        />
+                        <input
+                          type="number"
+                          step="any"
+                          value={manualCoords[id]?.lng ?? ""}
+                          onChange={(e) =>
+                            setManualCoords((prev) => ({
+                              ...prev,
+                              [id]: { ...(prev[id] || {}), lng: e.target.value },
+                            }))
+                          }
+                          placeholder="Longitude"
+                          className="input-field text-xs py-1.5"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleApplyManualLocation(id)}
+                        className="w-full text-xs py-1.5 px-3 rounded-lg font-medium bg-brand-gold/20 border border-brand-gold/40 text-brand-gold hover:bg-brand-gold/30"
+                      >
+                        Save Coordinates
+                      </button>
+                    </div>
                   )}
                 </div>
-
-                {loc ? (
-                  <p className="text-xs text-gray-500 mb-3">
-                    {loc.lat.toFixed(4)}°N, {loc.lng.toFixed(4)}°E
-                  </p>
-                ) : (
-                  <p className="text-xs text-gray-600 mb-3">No location data</p>
-                )}
-
-                <button
-                  onClick={() => handleToggleOverride(id)}
-                  className={`w-full text-xs py-1.5 px-3 rounded-lg font-medium transition-colors border ${
-                    isManual
-                      ? "bg-yellow-900/40 border-yellow-700 text-yellow-300 hover:bg-yellow-900/60"
-                      : "bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white"
-                  }`}
-                >
-                  {isManual ? "🔴 Disable Override" : "🟡 Enable Override"}
-                </button>
-
-                {isManual && (
-                  <div className="mt-3 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        step="any"
-                        value={manualCoords[id]?.lat ?? ""}
-                        onChange={(e) =>
-                          setManualCoords((prev) => ({
-                            ...prev,
-                            [id]: { ...(prev[id] || {}), lat: e.target.value },
-                          }))
-                        }
-                        placeholder="Latitude"
-                        className="input-field text-xs py-1.5"
-                      />
-                      <input
-                        type="number"
-                        step="any"
-                        value={manualCoords[id]?.lng ?? ""}
-                        onChange={(e) =>
-                          setManualCoords((prev) => ({
-                            ...prev,
-                            [id]: { ...(prev[id] || {}), lng: e.target.value },
-                          }))
-                        }
-                        placeholder="Longitude"
-                        className="input-field text-xs py-1.5"
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleApplyManualLocation(id)}
-                      className="w-full text-xs py-1.5 px-3 rounded-lg font-medium bg-brand-gold/20 border border-brand-gold/40 text-brand-gold hover:bg-brand-gold/30"
-                    >
-                      Save Coordinates
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
 
           {/* Legend */}
-          <div className="card mt-2">
+          <div className="card mt-2 shrink-0">
             <p className="text-xs font-semibold text-gray-400 mb-2">Legend</p>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-xs text-gray-500">
