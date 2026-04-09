@@ -172,7 +172,7 @@ export default function AdminMap() {
         </div>
 
         {/* Sidebar: manual driver controls */}
-        <div className="w-72 flex flex-col min-h-0">
+        <div className="w-64 flex flex-col min-h-0">
           <h3 className="text-sm font-semibold text-gray-300">Manual Driver Controls</h3>
           <p className="text-xs text-gray-500 -mt-1">
             Enable override to drag a marker and push coordinates to Redis.

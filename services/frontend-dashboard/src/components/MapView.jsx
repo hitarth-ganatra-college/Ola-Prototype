@@ -3,7 +3,6 @@ import L from "leaflet";
 import { MapContainer, Marker, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
 
 const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
-const MAPTILER_TILE_URL = `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY || ""}`;
 const MAP_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.maptiler.com/">MapTiler</a>';
 
@@ -11,7 +10,7 @@ function buildDriverIcon(isManual) {
   const size = isManual ? 18 : 14;
   const color = isManual ? "#e94560" : "#10b981";
   return L.divIcon({
-    className: "driver-marker-wrapper",
+    className: "",
     html: `<span style="display:block;width:${size}px;height:${size}px;border-radius:9999px;background:${color};border:2px solid #ffffff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
@@ -63,9 +62,11 @@ export default function MapView({
     );
   }
 
+  const tileUrl = `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`;
+
   return (
     <MapContainer center={center} zoom={zoom} className="w-full h-full" zoomControl>
-      <TileLayer attribution={MAP_ATTRIBUTION} url={MAPTILER_TILE_URL} />
+      <TileLayer attribution={MAP_ATTRIBUTION} url={tileUrl} />
       <MapClickHandler onClick={onClick} />
       {markers
         .filter((marker) => Number.isFinite(marker.lat) && Number.isFinite(marker.lng))
