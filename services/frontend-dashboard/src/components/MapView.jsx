@@ -10,7 +10,7 @@ function buildDriverIcon(isManual) {
   const size = isManual ? 18 : 14;
   const color = isManual ? "#e94560" : "#10b981";
   return L.divIcon({
-    className: "",
+    className: "driver-marker",
     html: `<span style="display:block;width:${size}px;height:${size}px;border-radius:9999px;background:${color};border:2px solid #ffffff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
