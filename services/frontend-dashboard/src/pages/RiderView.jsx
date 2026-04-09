@@ -45,7 +45,7 @@ export default function RiderView() {
         if (active) {
           if (trip?.status === "SYNCING") {
             setUiStatus(null);
-            setError("Service is temporarily down. Please try again in a moment.");
+            setError("Service is down. Please try again in a moment.");
             if (!serviceDownToastShownRef.current) {
               toast.error("Service is down. Please try again in a moment.");
               serviceDownToastShownRef.current = true;
@@ -65,7 +65,7 @@ export default function RiderView() {
         if (err?.status !== 404) {
           if (active && err?.status >= 500) {
             setUiStatus(null);
-            setError("Service is temporarily down. Please try again in a moment.");
+            setError("Service is down. Please try again in a moment.");
             if (!serviceDownToastShownRef.current) {
               toast.error("Service is down. Please try again in a moment.");
               serviceDownToastShownRef.current = true;
