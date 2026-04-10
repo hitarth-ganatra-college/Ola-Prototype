@@ -37,10 +37,12 @@ docker compose up -d
 ### B. Start all Node services (single command)
 Run from repository root:
 ```bash
-set -e
 for s in identity-service tracking-service matching-service trip-service ingestion-simulator frontend-dashboard; do
   echo "Installing dependencies for $s..."
-  (cd services/$s && npm install)
+  if ! (cd services/$s && npm install); then
+    echo "[ERROR] npm install failed for $s"
+    exit 1
+  fi
 done
 
 (cd services/identity-service && npm start || echo "[ERROR] identity-service exited") &
@@ -54,7 +56,7 @@ wait
 
 > If you prefer, you can run each service in its own terminal with the same `npm start` / `npm run dev` commands.
 > On repeated runs, you can skip reinstalling packages and run only the `npm start` / `npm run dev` lines.
-> To stop all backgrounded services from the same shell: `pids=$(jobs -p); [ -n "$pids" ] && kill $pids`
+> To stop all backgrounded services from this command, press `Ctrl+C`.
 
 ---
 
@@ -120,7 +122,7 @@ docker compose start mongo
 
 If `redis-cli` is not available on your host, use:
 ```bash
-docker exec -it ola-prototype-redis-1 redis-cli LRANGE pending_writes 0 -1
+docker compose exec redis redis-cli LRANGE pending_writes 0 -1
 ```
 
 Now verify in dashboards:
