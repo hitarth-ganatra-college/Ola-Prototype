@@ -30,6 +30,8 @@ PORT_CHECKS = [
     ("Prometheus", "127.0.0.1", 9090),
     ("Grafana", "127.0.0.1", 3000),
 ]
+PORT_CHECK_INTERVAL = 1.2
+SERVICE_STARTUP_DELAY = 0.6
 
 
 def is_windows():
@@ -85,7 +87,7 @@ def wait_for_port(name, host, port, timeout=90):
                 print(f"[OK] {name} is up")
                 return True
             except OSError:
-                time.sleep(1.2)
+                time.sleep(PORT_CHECK_INTERVAL)
     print(f"[WARN] {name} not reachable on {host}:{port}")
     return False
 
@@ -128,6 +130,8 @@ class ProcessManager:
             return
 
         if is_windows():
+            # CREATE_NEW_CONSOLE opens a separate terminal window; CREATE_NEW_PROCESS_GROUP
+            # lets us terminate the full process tree later with taskkill /T.
             flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [npm_cmd, "run", script_name],
@@ -201,7 +205,7 @@ def trigger_circuit_breaker(docker_cmd: str):
     run_blocking([docker_cmd, "compose", "stop", "mongo"], cwd=ROOT)
     time.sleep(2)
 
-    ride_id = f"ride-cb-{int(time.time())}"
+    ride_id = f"ride-circuitbreaker-{int(time.time())}"
     payload = json.dumps(
         {
             "ride_id": ride_id,
@@ -261,7 +265,7 @@ def start_services(projects, npm_cmd, manager: ProcessManager, include_frontend=
             print(f"[SKIP] No start/dev script in {p.name}")
             continue
         manager.start(p.name, p, npm_cmd, script)
-        time.sleep(0.6)
+        time.sleep(SERVICE_STARTUP_DELAY)
 
     if include_frontend and FRONTEND_DIR in projects:
         script = pick_run_script(FRONTEND_DIR)
