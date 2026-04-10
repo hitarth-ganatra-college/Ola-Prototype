@@ -204,7 +204,7 @@ def open_dashboards():
         pass
 
 
-def open_frontend_dashboard(timeout=90):
+def open_kafka_monitor_dashboard(timeout=90):
     if wait_for_port("Frontend Dashboard", "127.0.0.1", 5173, timeout=timeout):
         print(f"[OPEN] Kafka Topic Monitor: {FRONTEND_URL}")
         try:
@@ -322,7 +322,7 @@ def main():
     start_infra(docker_cmd)
     install_dependencies(projects, npm_cmd)
     start_services(projects, npm_cmd, manager, include_frontend=True)
-    open_frontend_dashboard(timeout=120)
+    open_kafka_monitor_dashboard(timeout=120)
 
     while True:
         print_menu()
@@ -342,7 +342,7 @@ def main():
         elif choice == "4":
             manager.stop_all()
             start_services(projects, npm_cmd, manager, include_frontend=True)
-            open_frontend_dashboard(timeout=90)
+            open_kafka_monitor_dashboard(timeout=90)
         elif choice == "5":
             manager.stop_all()
         elif choice == "0":

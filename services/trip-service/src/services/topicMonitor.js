@@ -99,5 +99,5 @@ export async function startTopicMonitorConsumer() {
     },
   });
 
-  console.log(`[Consumer] Topic monitor subscribed to ${MONITORED_TOPICS.join(", ")}`);
+  console.log(`[Consumer:topic-monitor] Subscribed to ${MONITORED_TOPICS.join(", ")}`);
 }

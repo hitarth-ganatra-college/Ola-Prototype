@@ -126,7 +126,7 @@ export default function KafkaTopicsView() {
             ) : (
               <div className="space-y-2 max-h-80 overflow-auto pr-1">
                 {[...messages].reverse().map((msg) => (
-                  <div key={`${topicName}-${msg.offset}-${msg.observed_at || msg.timestamp}`} className="rounded-lg border border-gray-800 bg-gray-900/70 p-3">
+                  <div key={`${topicName}-${msg.partition ?? "na"}-${msg.offset}`} className="rounded-lg border border-gray-800 bg-gray-900/70 p-3">
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                       <span>Offset: {msg.offset}</span>
                       <span>{new Date(msg.observed_at || msg.timestamp).toLocaleTimeString()}</span>
