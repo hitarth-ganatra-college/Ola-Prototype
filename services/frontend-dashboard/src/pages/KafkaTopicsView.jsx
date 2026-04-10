@@ -44,7 +44,10 @@ export default function KafkaTopicsView() {
       });
     }
 
-    loadSnapshot().catch(() => setStatus("error"));
+    loadSnapshot().catch((err) => {
+      console.error("[KafkaTopicsView] Snapshot load failed", err);
+      setStatus("error");
+    });
 
     source = new EventSource(`${API_BASE.trip}/kafka-monitor/events`);
     source.onopen = () => setStatus("live");
@@ -122,8 +125,8 @@ export default function KafkaTopicsView() {
               <p className="text-sm text-gray-500">No recent messages</p>
             ) : (
               <div className="space-y-2 max-h-80 overflow-auto pr-1">
-                {[...messages].reverse().map((msg, idx) => (
-                  <div key={`${msg.offset}-${idx}`} className="rounded-lg border border-gray-800 bg-gray-900/70 p-3">
+                {[...messages].reverse().map((msg) => (
+                  <div key={`${topicName}-${msg.offset}-${msg.observed_at || msg.timestamp}`} className="rounded-lg border border-gray-800 bg-gray-900/70 p-3">
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                       <span>Offset: {msg.offset}</span>
                       <span>{new Date(msg.observed_at || msg.timestamp).toLocaleTimeString()}</span>

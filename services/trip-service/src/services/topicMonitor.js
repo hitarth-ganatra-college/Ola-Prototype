@@ -30,12 +30,18 @@ function publishToStreams(entry) {
 }
 
 function trackMessage({ topic, partition, message }) {
+  const rawTimestamp = Number(message.timestamp);
+  const hasKafkaTimestamp = Number.isFinite(rawTimestamp) && rawTimestamp > 0;
+  if (!hasKafkaTimestamp) {
+    console.warn(`[Consumer:topic-monitor] Missing/invalid Kafka timestamp on topic ${topic} offset ${message.offset}`);
+  }
+
   const entry = {
     topic,
     partition,
     key: message.key ? message.key.toString() : null,
     offset: message.offset,
-    timestamp: new Date(Number(message.timestamp) || Date.now()).toISOString(),
+    timestamp: new Date(hasKafkaTimestamp ? rawTimestamp : Date.now()).toISOString(),
     payload: parseMessageValue(message.value),
     observed_at: new Date().toISOString(),
   };
