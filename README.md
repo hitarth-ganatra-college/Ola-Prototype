@@ -53,6 +53,7 @@ python scripts/controller.py
 - Rider: http://localhost:5173/rider
 - Driver: http://localhost:5173/driver
 - Admin map: http://localhost:5173/admin
+- Kafka topic monitor: http://localhost:5173/kafka-monitor
 
 ### Observability dashboards
 - Prometheus UI: http://localhost:9090

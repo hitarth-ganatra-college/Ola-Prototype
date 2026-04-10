@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { role: "RIDER",  path: "/rider",  label: "🚕 Rider",  emoji: "🚕" },
   { role: "DRIVER", path: "/driver", label: "🚗 Driver", emoji: "🚗" },
   { role: "ADMIN",  path: "/admin",  label: "🗺️ Admin",  emoji: "🗺️" },
+  { role: "ADMIN",  path: "/kafka-monitor",  label: "📡 Kafka",  emoji: "📡" },
 ];
 
 export default function Layout({ children }) {

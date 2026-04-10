@@ -22,6 +22,10 @@ SERVICE_DIRS = [
     ROOT / "services" / "trip-service",
 ]
 FRONTEND_DIR = ROOT / "services" / "frontend-dashboard"
+FRONTEND_HOST = "127.0.0.1"
+FRONTEND_PORT = 5173
+FRONTEND_BASE_URL = f"http://localhost:{FRONTEND_PORT}"
+KAFKA_MONITOR_URL = f"{FRONTEND_BASE_URL}/kafka-monitor"
 
 PORT_CHECKS = [
     ("Kafka", "127.0.0.1", 29092),
@@ -203,6 +207,15 @@ def open_dashboards():
         pass
 
 
+def open_kafka_monitor_dashboard(timeout=90):
+    if wait_for_port("Frontend Dashboard", FRONTEND_HOST, FRONTEND_PORT, timeout=timeout):
+        print(f"[OPEN] Kafka Topic Monitor: {KAFKA_MONITOR_URL}")
+        try:
+            webbrowser.open(KAFKA_MONITOR_URL, new=2)
+        except Exception:
+            pass
+
+
 def trigger_circuit_breaker(docker_cmd: str):
     print("\n=== Trigger Circuit Breaker ===")
     run_blocking([docker_cmd, "compose", "stop", "mongo"], cwd=ROOT)
@@ -312,6 +325,7 @@ def main():
     start_infra(docker_cmd)
     install_dependencies(projects, npm_cmd)
     start_services(projects, npm_cmd, manager, include_frontend=True)
+    open_kafka_monitor_dashboard(timeout=120)
 
     while True:
         print_menu()
@@ -331,6 +345,7 @@ def main():
         elif choice == "4":
             manager.stop_all()
             start_services(projects, npm_cmd, manager, include_frontend=True)
+            open_kafka_monitor_dashboard(timeout=90)
         elif choice == "5":
             manager.stop_all()
         elif choice == "0":
