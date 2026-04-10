@@ -37,6 +37,14 @@ docker compose up -d
 ### B. Start all Node services (single command)
 Run from repository root:
 ```bash
+pids=()
+cleanup() {
+  for pid in "${pids[@]}"; do
+    kill "$pid" 2>/dev/null || true
+  done
+}
+trap cleanup INT TERM EXIT
+
 for s in identity-service tracking-service matching-service trip-service ingestion-simulator frontend-dashboard; do
   echo "Installing dependencies for $s..."
   if ! (cd services/$s && npm install); then
@@ -45,18 +53,19 @@ for s in identity-service tracking-service matching-service trip-service ingesti
   fi
 done
 
-(cd services/identity-service && npm start || echo "[ERROR] identity-service exited") &
-(cd services/tracking-service && npm start || echo "[ERROR] tracking-service exited") &
-(cd services/matching-service && npm start || echo "[ERROR] matching-service exited") &
-(cd services/trip-service && npm start || echo "[ERROR] trip-service exited") &
-(cd services/ingestion-simulator && npm start || echo "[ERROR] ingestion-simulator exited") &
-(cd services/frontend-dashboard && npm run dev || echo "[ERROR] frontend-dashboard exited") &
+(cd services/identity-service && npm start) & pids+=($!)
+(cd services/tracking-service && npm start) & pids+=($!)
+(cd services/matching-service && npm start) & pids+=($!)
+(cd services/trip-service && npm start) & pids+=($!)
+(cd services/ingestion-simulator && npm start) & pids+=($!)
+(cd services/frontend-dashboard && npm run dev) & pids+=($!)
+
 wait
 ```
 
 > If you prefer, you can run each service in its own terminal with the same `npm start` / `npm run dev` commands.
 > On repeated runs, you can skip reinstalling packages and run only the `npm start` / `npm run dev` lines.
-> To stop all backgrounded services from this command, press `Ctrl+C`.
+> Press `Ctrl+C` to stop all started services from this command.
 
 ---
 
