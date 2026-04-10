@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
 import { useDriverLocations } from "../hooks/useDriverLocations.js";
 import { getActiveDrivers, getManualOverrides, pushManualLocation, toggleManualOverride } from "../services/driverService.js";
-import MapView from "../components/MapView.jsx";
 import { DRIVER_PROFILE_IDS } from "../constants/drivers.js";
 
 function formatCoordinate(value) {
@@ -47,16 +46,6 @@ export default function AdminMap() {
     }
   }
 
-  // Build marker list from live locations
-  const markers = Object.values(mergedLocations).map((loc) => ({
-    id: loc.driver_id,
-    lat: loc.lat,
-    lng: loc.lng,
-    isManual: !!manualToggles[loc.driver_id],
-    draggable: !!manualToggles[loc.driver_id],
-    label: loc.driver_id.startsWith("driver-") ? loc.driver_id.replace("driver-", "D") : loc.driver_id,
-  }));
-
   useEffect(() => {
     setDriverCount(Object.keys(mergedLocations).length);
   }, [mergedLocations]);
@@ -79,21 +68,6 @@ export default function AdminMap() {
       return next;
     });
   }, [mergedLocations]);
-
-  const handleMarkerDrag = useCallback(
-    async (driverId, { lat, lng }) => {
-      try {
-        await pushManualLocation({ driver_id: driverId, lat, lng });
-        setServerDrivers((prev) => ({ ...prev, [driverId]: { driver_id: driverId, lat, lng, isManual: true } }));
-        setManualCoords((prev) => ({ ...prev, [driverId]: { lat: String(lat), lng: String(lng) } }));
-        toast.success(`Updated location for ${driverId}`);
-      } catch {
-        // Backend not running — show demo feedback
-        toast(`Demo: location pushed for ${driverId} (${lat.toFixed(4)}, ${lng.toFixed(4)})`, { icon: "📍" });
-      }
-    },
-    []
-  );
 
   async function handleToggleOverride(driverId) {
     const newState = !manualToggles[driverId];
@@ -141,9 +115,9 @@ export default function AdminMap() {
       {/* Header + stats */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Admin / Debug Map</h2>
+          <h2 className="text-2xl font-bold text-white">Admin / Drivers</h2>
           <p className="text-gray-400 text-sm mt-0.5">
-            Live driver positions with manual override controls and coordinate inputs.
+            Live driver positions in a grid with manual override controls.
           </p>
         </div>
         <div className="flex gap-3">
@@ -160,25 +134,14 @@ export default function AdminMap() {
         </div>
       </div>
 
-      <div className="flex gap-4 flex-1 min-h-0">
-        {/* Map */}
-        <div className="flex-1 rounded-xl overflow-hidden" style={{ minHeight: 480 }}>
-          <MapView
-            center={{ lat: 19.076, lng: 72.8777 }}
-            zoom={13}
-            markers={markers}
-            onMarkerDrag={handleMarkerDrag}
-          />
-        </div>
+      <div className="flex-1 min-h-0">
+        <h3 className="text-sm font-semibold text-gray-300">Drivers Grid</h3>
+        <p className="text-xs text-gray-500 -mt-1 mb-3">
+          Live driver list with manual override controls and coordinate inputs.
+        </p>
 
-        {/* Sidebar: manual driver controls */}
-        <div className="w-64 flex flex-col min-h-0">
-          <h3 className="text-sm font-semibold text-gray-300">Manual Driver Controls</h3>
-          <p className="text-xs text-gray-500 -mt-1">
-            Enable override to drag a marker and push coordinates to Redis.
-          </p>
-
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+        <div className="h-full overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {selectableDriverIds.map((id) => {
               const isManual = !!manualToggles[id];
               const loc = mergedLocations[id];
@@ -259,21 +222,6 @@ export default function AdminMap() {
                 </div>
               );
             })}
-          </div>
-
-          {/* Legend */}
-          <div className="card mt-2 shrink-0">
-            <p className="text-xs font-semibold text-gray-400 mb-2">Legend</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
-                Simulated drivers
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="w-3 h-3 rounded-full bg-brand-gold inline-block" />
-                Manual-override drivers
-              </div>
-            </div>
           </div>
         </div>
       </div>
