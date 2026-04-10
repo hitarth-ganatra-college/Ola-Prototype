@@ -10,6 +10,12 @@ import { startLocationUpdatesConsumer } from "./consumers/locationUpdatesConsume
 import { register, breakerStateGauge } from "./metrics/prometheus.js";
 import { mongoBreaker } from "./breakers/mongoBreaker.js";
 import { Trip } from "./models/Trip.js";
+import {
+  getTopicMonitorSnapshot,
+  registerTopicMonitorClient,
+  startTopicMonitorConsumer,
+  unregisterTopicMonitorClient,
+} from "./services/topicMonitor.js";
 
 const app = express();
 app.use(express.json());
@@ -92,6 +98,34 @@ app.get("/trip/:ride_id", tripReadLimiter, async (req, res) => {
   }
 });
 
+app.get("/kafka-monitor/messages", (_req, res) => {
+  res.json(getTopicMonitorSnapshot());
+});
+
+app.get("/kafka-monitor/events", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  const snapshotEvent = {
+    type: "snapshot",
+    data: getTopicMonitorSnapshot(),
+  };
+  res.write(`data: ${JSON.stringify(snapshotEvent)}\n\n`);
+  registerTopicMonitorClient(res);
+
+  const keepAlive = setInterval(() => {
+    res.write(": keepalive\n\n");
+  }, 15_000);
+
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    unregisterTopicMonitorClient(res);
+    res.end();
+  });
+});
+
 mongoBreaker.on("open",     () => breakerStateGauge.set(1));
 mongoBreaker.on("halfOpen", () => breakerStateGauge.set(0.5));
 mongoBreaker.on("close",    () => breakerStateGauge.set(0));
@@ -106,6 +140,7 @@ async function bootstrap() {
   await startRideAcceptedConsumer();
   await startRideCompletedConsumer();
   await startLocationUpdatesConsumer();
+  await startTopicMonitorConsumer();
 
   app.listen(PORT, () => console.log(`[trip-service] Listening on :${PORT}`));
 }
