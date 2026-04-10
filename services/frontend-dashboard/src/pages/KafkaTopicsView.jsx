@@ -30,6 +30,7 @@ export default function KafkaTopicsView() {
 
   useEffect(() => {
     let source = null;
+    let disposed = false;
 
     async function loadSnapshot() {
       const response = await fetch(`${API_BASE.trip}/kafka-monitor/messages`);
@@ -55,34 +56,46 @@ export default function KafkaTopicsView() {
       });
     }
 
-    loadSnapshot().catch((err) => {
-      console.error("[KafkaTopicsView] Snapshot load failed", err);
-      setStatus("error");
-    });
-
-    source = new EventSource(`${API_BASE.trip}/kafka-monitor/events`);
-    source.onopen = () => setStatus("live");
-    source.onerror = () => setStatus("error");
-    source.onmessage = (event) => {
+    async function init() {
       try {
-        const parsed = JSON.parse(event.data);
-        if (parsed.type === "snapshot") {
-          const next = {};
-          for (const topic of parsed.data?.topics || []) {
-            next[topic.topic] = topic.messages || [];
-          }
-          setTopics(next);
-          return;
-        }
-        if (parsed.topic) {
-          upsertMessage(parsed);
-        }
-      } catch {
-        // ignore malformed stream messages
+        await loadSnapshot();
+      } catch (err) {
+        console.error("[KafkaTopicsView] Snapshot load failed", err);
+        if (!disposed) setStatus("error");
+        return;
       }
-    };
 
-    return () => source?.close();
+      if (disposed) return;
+
+      source = new EventSource(`${API_BASE.trip}/kafka-monitor/events`);
+      source.onopen = () => setStatus("live");
+      source.onerror = () => setStatus("error");
+      source.onmessage = (event) => {
+        try {
+          const parsed = JSON.parse(event.data);
+          if (parsed.type === "snapshot") {
+            const next = {};
+            for (const topic of parsed.data?.topics || []) {
+              next[topic.topic] = topic.messages || [];
+            }
+            setTopics(next);
+            return;
+          }
+          if (parsed.topic) {
+            upsertMessage(parsed);
+          }
+        } catch {
+          // ignore malformed stream messages
+        }
+      };
+    }
+
+    init();
+
+    return () => {
+      disposed = true;
+      source?.close();
+    };
   }, []);
 
   const orderedTopics = useMemo(
