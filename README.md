@@ -48,6 +48,8 @@ wait
 ```
 
 > If you prefer, you can run each service in its own terminal with the same `npm start` / `npm run dev` commands.
+> On repeated runs, you can skip reinstalling packages and run only the `npm start` / `npm run dev` lines.
+> To stop all backgrounded services from the same shell: `jobs -p | xargs kill`
 
 ---
 
@@ -109,6 +111,11 @@ redis-cli LRANGE pending_writes 0 -1
 
 # 4) Restart MongoDB
 docker compose start mongo
+```
+
+If `redis-cli` is not available on your host, use:
+```bash
+docker exec -it ola-prototype-redis-1 redis-cli LRANGE pending_writes 0 -1
 ```
 
 Now verify in dashboards:
