@@ -38,10 +38,9 @@ docker compose up -d
 ### B. Start the full project (single command)
 Run from repository root:
 ```bash
-python3 scripts/controller.py
+python scripts/controller.py
 ```
 
-> On Windows, use: `python scripts\\controller.py`
 > If you prefer, you can still run each service in its own terminal with `npm start` / `npm run dev`.
 > Press `Ctrl+C` to stop all services started by the controller.
 
