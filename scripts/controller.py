@@ -30,10 +30,11 @@ PORT_CHECKS = [
     ("Prometheus", "127.0.0.1", 9090),
     ("Grafana", "127.0.0.1", 3000),
 ]
-# 1.2s keeps checks responsive without hammering local sockets.
+# 1.2s balances quick readiness checks with avoiding tight retry loops during docker startup.
 PORT_CHECK_INTERVAL = 1.2
-# Small stagger to reduce noisy startup races across service logs.
+# 0.6s gives Node services a short head start before launching the next one to reduce startup churn.
 SERVICE_STARTUP_DELAY = 0.6
+PENDING_WRITES_KEY = "pending_writes"
 
 
 def is_windows():
@@ -132,8 +133,8 @@ class ProcessManager:
             return
 
         if is_windows():
-            # CREATE_NEW_CONSOLE opens a separate terminal window and CREATE_NEW_PROCESS_GROUP
-            # keeps spawned service processes isolated from the controller console.
+            # CREATE_NEW_CONSOLE separates UI windows while CREATE_NEW_PROCESS_GROUP
+            # isolates child-service signal handling from the controller console.
             flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [npm_cmd, "run", script_name],
@@ -230,11 +231,11 @@ def trigger_circuit_breaker(docker_cmd: str):
         print(f"[WARN] Failed POST /accept-ride: {exc}")
 
     code, out, err = run_capture(
-        [docker_cmd, "compose", "exec", "-T", "redis", "redis-cli", "LRANGE", "pending_writes", "0", "-1"],
+        [docker_cmd, "compose", "exec", "-T", "redis", "redis-cli", "LRANGE", PENDING_WRITES_KEY, "0", "-1"],
         cwd=ROOT,
     )
     if code == 0:
-        print("[INFO] Redis pending_writes:")
+        print(f"[INFO] Redis {PENDING_WRITES_KEY}:")
         print(out or "(empty)")
     else:
         print(f"[WARN] Could not query redis pending_writes: {err or out}")
