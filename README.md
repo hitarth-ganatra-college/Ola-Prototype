@@ -27,6 +27,7 @@ Updated guide for the current microservices flow and observability setup.
 ### Prerequisites
 - Docker + Docker Compose
 - Node.js 20+
+- Python 3.9+
 
 ### A. Start infra (Kafka, Redis, Mongo, Prometheus, Grafana)
 ```bash
@@ -34,38 +35,14 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### B. Start all Node services (single command)
+### B. Start the full project (single command)
 Run from repository root:
 ```bash
-pids=()
-cleanup() {
-  for pid in "${pids[@]}"; do
-    kill "$pid" 2>/dev/null || true
-  done
-}
-trap cleanup INT TERM EXIT
-
-for s in identity-service tracking-service matching-service trip-service ingestion-simulator frontend-dashboard; do
-  echo "Installing dependencies for $s..."
-  if ! (cd services/$s && npm install); then
-    echo "[ERROR] npm install failed for $s"
-    exit 1
-  fi
-done
-
-(cd services/identity-service && npm start) & pids+=($!)
-(cd services/tracking-service && npm start) & pids+=($!)
-(cd services/matching-service && npm start) & pids+=($!)
-(cd services/trip-service && npm start) & pids+=($!)
-(cd services/ingestion-simulator && npm start) & pids+=($!)
-(cd services/frontend-dashboard && npm run dev) & pids+=($!)
-
-wait
+python scripts/controller.py
 ```
 
-> If you prefer, you can run each service in its own terminal with the same `npm start` / `npm run dev` commands.
-> On repeated runs, you can skip reinstalling packages and run only the `npm start` / `npm run dev` lines.
-> Press `Ctrl+C` to stop all started services from this command.
+> If you prefer, you can still run each service in its own terminal with `npm start` / `npm run dev`.
+> Press `Ctrl+C` to stop all services started by the controller.
 
 ---
 
