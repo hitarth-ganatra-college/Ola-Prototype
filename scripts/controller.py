@@ -132,8 +132,8 @@ class ProcessManager:
             return
 
         if is_windows():
-            # CREATE_NEW_CONSOLE opens a separate terminal window while
-            # CREATE_NEW_PROCESS_GROUP allows terminating the full process tree with taskkill /T.
+            # CREATE_NEW_CONSOLE opens a separate terminal window and CREATE_NEW_PROCESS_GROUP
+            # keeps spawned service processes isolated from the controller console.
             flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [npm_cmd, "run", script_name],
@@ -261,7 +261,7 @@ def install_dependencies(projects, npm_cmd):
 
 
 def start_services(projects, npm_cmd, manager: ProcessManager, include_frontend=True):
-    for p in [x for x in projects if x != FRONTEND_DIR]:
+    for p in (x for x in projects if x != FRONTEND_DIR):
         script = pick_run_script(p)
         if not script:
             print(f"[SKIP] No start/dev script in {p.name}")
