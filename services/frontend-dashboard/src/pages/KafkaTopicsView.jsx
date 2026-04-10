@@ -13,6 +13,17 @@ function prettyPayload(payload) {
   }
 }
 
+function formatEventTime(msg) {
+  const raw = msg.observedAt || msg.timestamp;
+  if (!raw) return "N/A";
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleTimeString();
+}
+
+function getMessageKey(topicName, msg) {
+  return `${topicName}-p${Number.isInteger(msg.partition) ? msg.partition : "unknown"}-o${msg.offset}-t${msg.observedAt || msg.timestamp || "na"}`;
+}
+
 export default function KafkaTopicsView() {
   const [topics, setTopics] = useState({});
   const [status, setStatus] = useState("connecting");
@@ -77,8 +88,8 @@ export default function KafkaTopicsView() {
   const orderedTopics = useMemo(
     () =>
       Object.entries(topics).sort(([, a], [, b]) => {
-        const aLatest = a[a.length - 1]?.observed_at || "";
-        const bLatest = b[b.length - 1]?.observed_at || "";
+        const aLatest = a[a.length - 1]?.observedAt || "";
+        const bLatest = b[b.length - 1]?.observedAt || "";
         return bLatest.localeCompare(aLatest);
       }),
     [topics]
@@ -127,12 +138,12 @@ export default function KafkaTopicsView() {
               <div className="space-y-2 max-h-80 overflow-auto pr-1">
                 {[...messages].reverse().map((msg) => (
                   <div
-                    key={`${topicName}-p${Number.isInteger(msg.partition) ? msg.partition : "unknown"}-o${msg.offset}-t${msg.observed_at || msg.timestamp || "na"}`}
+                    key={getMessageKey(topicName, msg)}
                     className="rounded-lg border border-gray-800 bg-gray-900/70 p-3"
                   >
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                       <span>Offset: {msg.offset}</span>
-                      <span>{new Date(msg.observed_at || msg.timestamp).toLocaleTimeString()}</span>
+                      <span>{formatEventTime(msg)}</span>
                     </div>
                     <pre className="text-xs text-gray-300 whitespace-pre-wrap break-all">
                       {prettyPayload(msg.payload)}

@@ -45,7 +45,7 @@ function trackMessage({ topic, partition, message }) {
     offset: message.offset,
     timestamp: new Date(hasKafkaTimestamp ? rawTimestamp : Date.now()).toISOString(),
     payload: parseMessageValue(message.value),
-    observed_at: new Date().toISOString(),
+    observedAt: new Date().toISOString(),
   };
 
   const current = topicBuffers.get(topic) || [];
@@ -63,14 +63,14 @@ export function getTopicMonitorSnapshot() {
     return {
       topic,
       count: messages.length,
-      latest_message_at: messages.length ? messages[messages.length - 1].observed_at : null,
+      latestMessageAt: messages.length ? messages[messages.length - 1].observedAt : null,
       messages,
     };
   });
 
   return {
-    monitored_topics: MONITORED_TOPICS,
-    max_messages_per_topic: MAX_MESSAGES_PER_TOPIC,
+    monitoredTopics: MONITORED_TOPICS,
+    maxMessagesPerTopic: MAX_MESSAGES_PER_TOPIC,
     topics,
   };
 }
