@@ -134,7 +134,7 @@ class ProcessManager:
 
         if is_windows():
             # CREATE_NEW_CONSOLE separates UI windows while CREATE_NEW_PROCESS_GROUP
-            # isolates child-service signal handling from the controller console.
+            # keeps Ctrl+C in the controller console from propagating to child services.
             flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [npm_cmd, "run", script_name],
@@ -343,6 +343,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
-        print(f"\n[FAILED] {e}")
+    except Exception as exc:
+        print(f"\n[FAILED] {exc}")
         sys.exit(1)
