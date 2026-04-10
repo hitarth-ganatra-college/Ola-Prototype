@@ -33,7 +33,9 @@ function trackMessage({ topic, partition, message }) {
   const rawTimestamp = Number(message.timestamp);
   const hasKafkaTimestamp = Number.isFinite(rawTimestamp) && rawTimestamp > 0;
   if (!hasKafkaTimestamp) {
-    console.warn(`[Consumer:topic-monitor] Missing/invalid Kafka timestamp on topic ${topic} offset ${message.offset}`);
+    console.warn(
+      `[Consumer:topic-monitor] Missing/invalid Kafka timestamp on topic ${topic} offset ${message.offset}; using current time fallback`
+    );
   }
 
   const entry = {

@@ -22,7 +22,10 @@ SERVICE_DIRS = [
     ROOT / "services" / "trip-service",
 ]
 FRONTEND_DIR = ROOT / "services" / "frontend-dashboard"
-FRONTEND_URL = "http://localhost:5173/kafka-monitor"
+FRONTEND_HOST = "127.0.0.1"
+FRONTEND_PORT = 5173
+FRONTEND_BASE_URL = f"http://localhost:{FRONTEND_PORT}"
+KAFKA_MONITOR_URL = f"{FRONTEND_BASE_URL}/kafka-monitor"
 
 PORT_CHECKS = [
     ("Kafka", "127.0.0.1", 29092),
@@ -205,10 +208,10 @@ def open_dashboards():
 
 
 def open_kafka_monitor_dashboard(timeout=90):
-    if wait_for_port("Frontend Dashboard", "127.0.0.1", 5173, timeout=timeout):
-        print(f"[OPEN] Kafka Topic Monitor: {FRONTEND_URL}")
+    if wait_for_port("Frontend Dashboard", FRONTEND_HOST, FRONTEND_PORT, timeout=timeout):
+        print(f"[OPEN] Kafka Topic Monitor: {KAFKA_MONITOR_URL}")
         try:
-            webbrowser.open(FRONTEND_URL, new=2)
+            webbrowser.open(KAFKA_MONITOR_URL, new=2)
         except Exception:
             pass
 
