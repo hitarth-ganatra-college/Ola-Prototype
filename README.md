@@ -37,19 +37,23 @@ docker compose up -d
 ### B. Start all Node services (single command)
 Run from repository root:
 ```bash
-for s in identity-service tracking-service matching-service trip-service ingestion-simulator frontend-dashboard; do (cd services/$s && npm install); done && \
-(cd services/identity-service && npm start) & \
-(cd services/tracking-service && npm start) & \
-(cd services/matching-service && npm start) & \
-(cd services/trip-service && npm start) & \
-(cd services/ingestion-simulator && npm start) & \
-(cd services/frontend-dashboard && npm run dev) & \
+set -e
+for s in identity-service tracking-service matching-service trip-service ingestion-simulator frontend-dashboard; do
+  (cd services/$s && npm install)
+done
+
+(cd services/identity-service && npm start) &
+(cd services/tracking-service && npm start) &
+(cd services/matching-service && npm start) &
+(cd services/trip-service && npm start) &
+(cd services/ingestion-simulator && npm start) &
+(cd services/frontend-dashboard && npm run dev) &
 wait
 ```
 
 > If you prefer, you can run each service in its own terminal with the same `npm start` / `npm run dev` commands.
 > On repeated runs, you can skip reinstalling packages and run only the `npm start` / `npm run dev` lines.
-> To stop all backgrounded services from the same shell: `jobs -p | xargs kill`
+> To stop all backgrounded services from the same shell: `jobs -p | xargs -r kill`
 
 ---
 
