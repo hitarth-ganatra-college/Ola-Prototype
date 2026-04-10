@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { useTripStatus } from "../hooks/useTripStatus.js";
@@ -16,6 +16,7 @@ export default function RiderView() {
   const [rideData, setRideData] = useState(null); // { ride_id, nearest_drivers }
   const [uiStatus, setUiStatus] = useState(null);
   const [tripSnapshot, setTripSnapshot] = useState(null);
+  const serviceDownToastShownRef = useRef(false);
 
   // Subscribe to realtime trip updates from WebSocket/SSE
   const realtimeStatus = useTripStatus(rideData?.ride_id);
@@ -24,7 +25,7 @@ export default function RiderView() {
     if (!status) return null;
     if (status === "ACCEPTED") return "Assigned";
     if (status === "COMPLETED") return "Completed";
-    if (status === "SYNCING") return "Syncing...";
+    if (status === "SYNCING") return null;
     return status;
   }
 
@@ -42,6 +43,17 @@ export default function RiderView() {
       try {
         const trip = await getTripStatus(rideId);
         if (active) {
+          if (trip?.status === "SYNCING") {
+            setUiStatus(null);
+            setError("Service is down. Please try again in a moment.");
+            if (!serviceDownToastShownRef.current) {
+              toast.error("Service is down. Please try again in a moment.");
+              serviceDownToastShownRef.current = true;
+            }
+            return;
+          }
+
+          setError(null);
           setTripSnapshot(trip);
           if (trip?.status === "COMPLETED" && pollIntervalId) {
             clearInterval(pollIntervalId);
@@ -51,6 +63,14 @@ export default function RiderView() {
       } catch (err) {
         // Trip may not exist yet (404) until a driver accepts; ignore only that case.
         if (err?.status !== 404) {
+          if (active && err?.status >= 500) {
+            setUiStatus(null);
+            setError("Service is down. Please try again in a moment.");
+            if (!serviceDownToastShownRef.current) {
+              toast.error("Service is down. Please try again in a moment.");
+              serviceDownToastShownRef.current = true;
+            }
+          }
           console.warn("Failed to sync trip status", err);
         }
       }
@@ -76,6 +96,7 @@ export default function RiderView() {
     setRideData(null);
     setUiStatus("Searching");
     setTripSnapshot(null);
+    serviceDownToastShownRef.current = false;
     const toastId = toast.loading("Finding nearest drivers...");
 
     try {
@@ -113,7 +134,7 @@ export default function RiderView() {
 
       {/* Trip status card */}
       {(displayStatus || error) && (
-        <div className={`card border-l-4 ${error ? "border-l-red-500" : displayStatus === "Syncing..." ? "border-l-yellow-500" : "border-l-brand-gold"}`}>
+        <div className={`card border-l-4 ${error ? "border-l-red-500" : "border-l-brand-gold"}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-400 mb-1">Trip Status</p>
@@ -127,11 +148,6 @@ export default function RiderView() {
               {tripSnapshot?.driver_id && (
                 <p className="text-xs text-gray-500 mt-1">
                   Driver: <span className="text-gray-300 font-medium">{tripSnapshot.driver_id}</span>
-                </p>
-              )}
-              {displayStatus === "Syncing..." && (
-                <p className="text-yellow-400 text-xs mt-2">
-                  Backend is syncing your trip — this may take a moment.
                 </p>
               )}
             </div>
@@ -229,7 +245,7 @@ export default function RiderView() {
 
       {/* Info footer */}
       <div className="text-xs text-gray-600 border-t border-gray-800 pt-4">
-        Trip lifecycle: Searching → Assigned → <span className="text-yellow-600">Syncing...</span> (on MongoDB fallback) → Completed
+        Trip lifecycle: Searching → Assigned → Completed
       </div>
     </div>
   );
