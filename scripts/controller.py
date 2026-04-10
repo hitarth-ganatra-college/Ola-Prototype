@@ -30,7 +30,9 @@ PORT_CHECKS = [
     ("Prometheus", "127.0.0.1", 9090),
     ("Grafana", "127.0.0.1", 3000),
 ]
+# 1.2s keeps checks responsive without hammering local sockets.
 PORT_CHECK_INTERVAL = 1.2
+# Small stagger to reduce noisy startup races across service logs.
 SERVICE_STARTUP_DELAY = 0.6
 
 
@@ -130,8 +132,8 @@ class ProcessManager:
             return
 
         if is_windows():
-            # CREATE_NEW_CONSOLE opens a separate terminal window; CREATE_NEW_PROCESS_GROUP
-            # lets us terminate the full process tree later with taskkill /T.
+            # CREATE_NEW_CONSOLE opens a separate terminal window while
+            # CREATE_NEW_PROCESS_GROUP allows terminating the full process tree with taskkill /T.
             flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [npm_cmd, "run", script_name],
@@ -205,7 +207,7 @@ def trigger_circuit_breaker(docker_cmd: str):
     run_blocking([docker_cmd, "compose", "stop", "mongo"], cwd=ROOT)
     time.sleep(2)
 
-    ride_id = f"ride-circuitbreaker-{int(time.time())}"
+    ride_id = f"ride-circuit-breaker-{int(time.time())}"
     payload = json.dumps(
         {
             "ride_id": ride_id,
