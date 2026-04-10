@@ -54,6 +54,18 @@ async function startLocationConsumer() {
 }
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "tracking-service" }));
+app.get("/metrics", (_req, res) => {
+  res.set("Content-Type", "text/plain; charset=utf-8");
+  res.send([
+    "# HELP tracking_service_up Tracking service availability",
+    "# TYPE tracking_service_up gauge",
+    "tracking_service_up 1",
+    "# HELP tracking_service_uptime_seconds Tracking service uptime in seconds",
+    "# TYPE tracking_service_uptime_seconds gauge",
+    `tracking_service_uptime_seconds ${process.uptime().toFixed(2)}`,
+    "",
+  ].join("\n"));
+});
 
 app.get("/drivers", readLimiter, async (_req, res) => {
   try {

@@ -8,16 +8,13 @@ scrape_configs:
       - targets: ["host.docker.internal:4005"]
 
   - job_name: "tracking-service"
-    metrics_path: /health
     static_configs:
       - targets: ["host.docker.internal:4003"]
 
   - job_name: "matching-service"
-    metrics_path: /health
     static_configs:
       - targets: ["host.docker.internal:4004"]
 
   - job_name: "identity-service"
-    metrics_path: /health
     static_configs:
       - targets: ["host.docker.internal:4001"]

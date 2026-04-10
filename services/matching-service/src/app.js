@@ -20,6 +20,18 @@ const DRIVER_REQUESTS_PREFIX = "driver:rideRequests:";
 const RIDE_TARGETS_PREFIX = "ride:targets:";
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "matching-service" }));
+app.get("/metrics", (_req, res) => {
+  res.set("Content-Type", "text/plain; charset=utf-8");
+  res.send([
+    "# HELP matching_service_up Matching service availability",
+    "# TYPE matching_service_up gauge",
+    "matching_service_up 1",
+    "# HELP matching_service_uptime_seconds Matching service uptime in seconds",
+    "# TYPE matching_service_uptime_seconds gauge",
+    `matching_service_uptime_seconds ${process.uptime().toFixed(2)}`,
+    "",
+  ].join("\n"));
+});
 
 async function getDriverQueue(driverId) {
   const raw = await redis.lrange(`${DRIVER_REQUESTS_PREFIX}${driverId}`, 0, -1);

@@ -11,6 +11,18 @@ const JWT_SECRET = process.env.JWT_SECRET || "super-secret-dev-key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "identity-service" }));
+app.get("/metrics", (_req, res) => {
+  res.set("Content-Type", "text/plain; charset=utf-8");
+  res.send([
+    "# HELP identity_service_up Identity service availability",
+    "# TYPE identity_service_up gauge",
+    "identity_service_up 1",
+    "# HELP identity_service_uptime_seconds Identity service uptime in seconds",
+    "# TYPE identity_service_uptime_seconds gauge",
+    `identity_service_uptime_seconds ${process.uptime().toFixed(2)}`,
+    "",
+  ].join("\n"));
+});
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
